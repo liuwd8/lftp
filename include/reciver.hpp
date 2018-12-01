@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _LFTP_RDT_HPP_
 #define _LFTP_RDT_HPP_
 
@@ -12,7 +13,7 @@
 #include <queue>
 #include "packet.hpp"
 
-#define DEFAULTWINDOWSIZE 20
+#define DEFAULTWINDOWSIZE 25
 #define MAXWAITTIME 500
 
 using std::string;

@@ -16,8 +16,8 @@ RdtReciver::~RdtReciver() {
 
 int RdtReciver::init(unsigned long targetIP, u_short port) {
   WSADATA data;
-  WORD scokVersion = MAKEWORD(2, 2);
-  if (WSAStartup(scokVersion, &data) != 0) {
+  WORD sockVersion = MAKEWORD(2, 2);
+  if (WSAStartup(sockVersion, &data) != 0) {
     return 1;
   }
   socket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);

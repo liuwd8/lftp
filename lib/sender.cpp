@@ -27,8 +27,8 @@ RdtSender::~RdtSender() {
 
 int RdtSender::init(unsigned long targetIP, u_short port) {
   WSADATA data;
-  WORD scokVersion = MAKEWORD(2, 2);
-  if (WSAStartup(scokVersion, &data) != 0) {
+  WORD sockVersion = MAKEWORD(2, 2);
+  if (WSAStartup(sockVersion, &data) != 0) {
     return 1;
   }
   socket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -74,7 +74,7 @@ int RdtSender::rdt_send() {
       nextseqnum = base;
       in.seekg(nextseqnum * PACKETDATASIZE);
     }
-    if (!in.eof() && nextseqnum <= base + windowSize) {
+    if (!in.eof() && nextseqnum < base + windowSize) {
       in.read(packet.data, PACKETDATASIZE);
       packet.header.seqnum = nextseqnum;
       packet.header.length = in.gcount();
@@ -88,7 +88,6 @@ int RdtSender::rdt_send() {
     }
   }
   stopSender = 1;
-  packet.header.fin = 1;
   cout << "send complete!\n";
   return 0;
 }
@@ -96,9 +95,11 @@ int RdtSender::rdt_send() {
 void RdtSender::timer() {
   clock_t startTime = clock();
   double secondPassed;
+  double second;
   cout << "timer start\n";
   while (!stopSender) {
     secondPassed = clock() - startTime;
+    second = clock() - second;
     if (!isResend && secondPassed >= MaxTimeLimit) {
       cout << "time out\n";
       isResend = 1;
@@ -108,6 +109,10 @@ void RdtSender::timer() {
       cout << "restart time\n";
       startTime = clock();
       shouldRestartTimer = 0;
+    }
+    if (second >= 1000) {
+      cout << "speed: " << base * 1000.0 / clock() << " kb/s\n";
+      second = clock();
     }
   }
   cout << "timer end\n";
@@ -135,6 +140,9 @@ int RdtSender::rdt_rcv() {
       }
     }
     windowSize = ((packet.header.remaindSize ^ cwnd) & -(packet.header.remaindSize < cwnd)) ^ cwnd;
+    if (windowSize == 0) {
+      windowSize = 1;
+    }
     cout << "windows size: " << windowSize << '\n';
     cout << "SampleRTT: " << SampleRTT << '\n';
     EstimastedRTT = 0.875 * EstimastedRTT + 0.125 * SampleRTT;
@@ -198,4 +206,33 @@ void RdtSender::CongestionControl(Actions act) {
         cwnd = cwnd + 1;
       }
   }
+}
+
+void RdtSender::rdt_send_packet(Packet *packets, int n) {
+  thread recvThread(&RdtSender::rdt_rcv, this);
+  thread timerThread(&RdtSender::timer, this);
+  recvThread.detach();
+  timerThread.detach();
+  base = 0;
+  nextseqnum = 0;
+  windowSize = 1;
+  while (base < n) {
+    if (isResend) {
+      isResend = 0;
+      nextseqnum = base;
+    }
+    if (nextseqnum < n && nextseqnum < base + windowSize) {
+      packets[base].header.seqnum = nextseqnum;
+      packets[base].header.length = in.gcount();
+      packets[base].header.sendTime = clock();
+      cout << "send packet: " << packets[base].header.seqnum << '\n';
+      ::sendto(socket,(char *)&packets[base], packets[base].header.length + sizeof(packetHeader), 0,(sockaddr *)&targetAddr, sizeof(targetAddr));
+      if (base == nextseqnum) {
+        shouldRestartTimer = 1;
+      }
+      nextseqnum = nextseqnum + 1;
+    }
+  }
+  stopSender = 1;
+  cout << "send complete!\n";
 }

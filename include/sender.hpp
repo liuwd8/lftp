@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _LFTP_RDT_SENDER_HPP_
 #define _LFTP_RDT_SENDER_HPP_
 
@@ -50,13 +51,14 @@ class RdtSender {
   
   void timer();
   void CongestionControl(Actions act);
+  int rdt_send();
  public:
   RdtSender();
   ~RdtSender();
-  int rdt_send();
   int rdt_rcv();
   int rdt_send_file(string filePath);
   int init(unsigned long targetIP, u_short port);
+  void rdt_send_packet(Packet *packet, int n);
 };
 
 #endif
