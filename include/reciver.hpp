@@ -7,14 +7,16 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <cstdio>
 #include <vector>
 #include <thread>
 #include <mutex>
 #include <queue>
 #include "packet.hpp"
 
-#define DEFAULTWINDOWSIZE 25
+#define DEFAULTRECIVERWINDOWSIZE 25
 #define MAXWAITTIME 500
+#define CONNECTIONMAXTIME 15000
 
 using std::string;
 using std::ifstream;
@@ -49,6 +51,9 @@ class RdtReciver {
   void timer();
   int rdt_rcv_file(string filePath);
   int init(unsigned long targetIP, u_short port);
+  void rdt_reciver_packets(Packet *packet, unsigned long n);
+  SOCKET &getSocket();
+  void restart();
 };
 
 #endif

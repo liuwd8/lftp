@@ -8,20 +8,22 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cstdio>
 #include <thread>
-#include <mutex>
 #include "packet.hpp"
 
-#define DEFAULTWINDOWSIZE 2
+#define DEFAULTSENDERWINDOWSIZE 2
 #define DEFAULTTIMEOUTINTERVAL 5000
 #define MAXWINDOWSIZE 3000
+#ifndef CONNECTIONMAXTIME
+#define CONNECTIONMAXTIME 15000
+#endif
 
 using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::vector;
 using std::thread;
-using std::mutex;
 using std::cout;
 using std::ref;
 
@@ -36,7 +38,6 @@ class RdtSender {
   unsigned long windowSize; //窗口大小
   unsigned long base;       //基序号
   unsigned long nextseqnum; //下一个包序号
-  mutex recv_send_mutex;
   char isResend;
   char stopSender;
   ifstream in;
@@ -48,6 +49,7 @@ class RdtSender {
   enum Status {SLOWSTART = 0, CONGESTIONAVOIDANCE, FASTRECOVERY} status;
   enum Actions {NEWACK = 0, DUPACK, TIMEOUT};
   double helperCount;
+  char isDisConnect;
   
   void timer();
   void CongestionControl(Actions act);
@@ -58,7 +60,10 @@ class RdtSender {
   int rdt_rcv();
   int rdt_send_file(string filePath);
   int init(unsigned long targetIP, u_short port);
-  void rdt_send_packet(Packet *packet, int n);
+  void rdt_send_packets(Packet *packet, unsigned long n);
+  sockaddr_in getRemote();
+  void restart();
+  SOCKET getSocket();
 };
 
 #endif

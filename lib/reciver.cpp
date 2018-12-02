@@ -1,7 +1,7 @@
 #include "reciver.hpp"
 
 RdtReciver::RdtReciver() {
-  windowSize = DEFAULTWINDOWSIZE;
+  windowSize = DEFAULTRECIVERWINDOWSIZE;
   sizeofScoketAddrIn = sizeof(sockaddr_in);
   expectseqnum = 0;
   stopReciver = 0;
@@ -13,6 +13,9 @@ RdtReciver::~RdtReciver() {
   WSACleanup();
 }
 
+void RdtReciver::restart() {
+  expectseqnum = 0;
+}
 
 int RdtReciver::init(unsigned long targetIP, u_short port) {
   WSADATA data;
@@ -65,9 +68,6 @@ int RdtReciver::rdt_rcv() {
         }
         packet.header.seqnum = expectseqnum;
         sendto(socket, (char *)&packet, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeofScoketAddrIn);
-      } else if (packet.header.seqnum < expectseqnum) {
-        packet.header.seqnum = expectseqnum;
-        sendto(socket, (char *)&packet, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeofScoketAddrIn);
       } else if (buf.size() < windowSize){
         out.seekp(packet.header.seqnum * PACKETDATASIZE);
         out.write(packet.data, packet.header.length);
@@ -75,13 +75,17 @@ int RdtReciver::rdt_rcv() {
       }
     }
   }
+  cout << "file recive success.\n";
   stopReciver = 1;
+  expectseqnum = 0;
+  rdt_reciver_packets(&packet, 1);
   return ret;
 }
 
 void RdtReciver::timer() {
   clock_t startTime = clock();
-  double secondPassed;
+  clock_t secondPassed;
+  int count = 0;
   cout << "timer start\n";
   while (!stopReciver) {
     secondPassed = clock() - startTime;
@@ -97,12 +101,57 @@ void RdtReciver::timer() {
         sendto(socket, (char *)&packet, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeofScoketAddrIn);
       }
       shouldRestartTimer = 1;
+      count = count + 1;
       startTime = clock();
     } else if (shouldRestartTimer) {
       cout << "restart time\n";
       startTime = clock();
       shouldRestartTimer = 0;
+      count = 0;
+    }
+    if (count >= CONNECTIONMAXTIME / MAXWAITTIME) {
+      cout << "connection time out.\n";
+      this->~RdtReciver();
+      break;
     }
   }
   cout << "timer end\n";
+}
+
+void RdtReciver::rdt_reciver_packets(Packet *packets, unsigned long n) {
+  thread recvTimer(&RdtReciver::timer, this);
+  recvTimer.detach();
+  int ret;
+  Packet packet;
+  packet.header.fin = 0;
+  while (expectseqnum < n && !packet.header.fin) {
+    ret = recvfrom(socket, (char *)&packet, sizeof(packet), 0,(sockaddr *)&remote, &sizeofScoketAddrIn);
+    cout << "size: " << ret << ", seq: " << packet.header.seqnum << '\n';
+    cout << "file size: " << (int)packet.header.fileSize << " sendTime :" << packet.header.sendTime << '\n';
+    if (ret > 0) {
+      packet.header.remaindSize = windowSize - buf.size();
+      if (expectseqnum == packet.header.seqnum) {
+        shouldRestartTimer = 1;
+        snprintf(packets[packet.header.seqnum].data, packet.header.length, "%s", packet.data);
+        expectseqnum = expectseqnum + 1;
+        while (!buf.empty()) {
+          if (buf.top() != expectseqnum) {
+            break;
+          }
+          buf.pop();
+          expectseqnum = expectseqnum + 1;
+        }
+        packet.header.seqnum = expectseqnum;
+        sendto(socket, (char *)&packet, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeofScoketAddrIn);
+      } else if (buf.size() < windowSize){
+        snprintf(packets[packet.header.seqnum].data, packet.header.length, "%s", packet.data);
+        buf.push(packet.header.seqnum);
+      }
+    }
+  }
+  stopReciver = 1;
+}
+
+SOCKET &RdtReciver::getSocket() {
+  return socket;
 }
