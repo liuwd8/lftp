@@ -1,16 +1,18 @@
 #include <winsock2.h>
+#include <csignal>
 #include <fstream>
 #include <iostream>
-#include <csignal>
+#include "packet.hpp"
 #include "reciver.hpp"
 #include "sender.hpp"
-#include "packet.hpp"
 
 SOCKET *s;
+char isRunning = 1;
 // 主线程仅用来接收数据，当合法的数据到来时，开始新的线程，在发送数据。
 void handle(int x) {
   if (x == SIGINT) {
     cout << "bye!\n";
+    isRunning = 0;
     closesocket(*s);
     WSACleanup();
     exit(0);
@@ -20,7 +22,7 @@ void handle(int x) {
 int main(int argc, char const *argv[]) {
   WSADATA data;
   WORD sockVersion = MAKEWORD(2, 2);
-  signal(SIGINT,handle);
+  signal(SIGINT, handle);
   if (WSAStartup(sockVersion, &data) != 0) {
     return 1;
   }
@@ -31,7 +33,8 @@ int main(int argc, char const *argv[]) {
   localAddr.sin_port = htons(18888);
   localAddr.sin_addr.S_un.S_addr = INADDR_ANY;
 
-  if (bind(socket, (sockaddr *)&localAddr, sizeof(sockaddr_in)) == SOCKET_ERROR) {
+  if (bind(socket, (sockaddr *)&localAddr, sizeof(sockaddr_in)) ==
+      SOCKET_ERROR) {
     cout << "bind error.\n";
     return 0;
   }
@@ -39,9 +42,10 @@ int main(int argc, char const *argv[]) {
   sockaddr_in remote;
   Packet packet;
   int len = sizeof(sockaddr_in);
-  while (true) {
-    cout << "main thread working\n";
-    ret = recvfrom(socket, (char *)&packet, sizeof(Packet) - 1, 0, (sockaddr *)&remote, &len);
+  while (isRunning) {
+    cout << "main thread working" << std::endl;
+    ret = recvfrom(socket, (char *)&packet, sizeof(Packet) - 1, 0,
+                   (sockaddr *)&remote, &len);
     if (ret > 0) {
       Packet packetBackup;
       Packet *p = &packetBackup;
@@ -59,12 +63,13 @@ int main(int argc, char const *argv[]) {
         thread newReciverThread([=] {
           RdtReciver reciver;
           reciver.init(INADDR_ANY, 0);
-          sendto(reciver.getSocket(), (char *)p, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeof(sockaddr));
+          sendto(reciver.getSocket(), (char *)p, sizeof(packetHeader), 0,
+                 (sockaddr *)&remote, sizeof(sockaddr));
           reciver.rdt_rcv_file(str);
         });
         newReciverThread.detach();
       } else if (ch == 'g') {
-        thread newSenderThread([=]{
+        thread newSenderThread([=] {
           RdtSender sender;
           sender.init(remote.sin_addr.S_un.S_addr, htons(remote.sin_port));
           sender.rdt_send_packets(p, 1);

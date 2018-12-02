@@ -13,9 +13,7 @@ RdtReciver::~RdtReciver() {
   WSACleanup();
 }
 
-void RdtReciver::restart() {
-  expectseqnum = 0;
-}
+void RdtReciver::restart() { expectseqnum = 0; }
 
 int RdtReciver::init(unsigned long targetIP, u_short port) {
   WSADATA data;
@@ -28,14 +26,15 @@ int RdtReciver::init(unsigned long targetIP, u_short port) {
   localAddr.sin_port = htons(port);
   localAddr.sin_addr.S_un.S_addr = targetIP;
 
-  if (bind(socket, (sockaddr *)&localAddr, sizeofScoketAddrIn) == SOCKET_ERROR) {
+  if (bind(socket, (sockaddr *)&localAddr, sizeofScoketAddrIn) ==
+      SOCKET_ERROR) {
     return 2;
   }
   return 0;
 }
 
 int RdtReciver::rdt_rcv_file(string filePath) {
-  out.open(filePath, std::ios::out|std::ios::binary);
+  out.open(filePath, std::ios::out | std::ios::binary);
   if (!out) {
     return 0;
   }
@@ -49,9 +48,11 @@ int RdtReciver::rdt_rcv() {
   int ret;
   packet.header.fin = 0;
   while (expectseqnum * PACKETDATASIZE < packet.header.fileSize) {
-    ret = recvfrom(socket, (char *)&packet, sizeof(packet), 0,(sockaddr *)&remote, &sizeofScoketAddrIn);
+    ret = recvfrom(socket, (char *)&packet, sizeof(packet), 0,
+                   (sockaddr *)&remote, &sizeofScoketAddrIn);
     cout << "size: " << ret << ", seq: " << packet.header.seqnum << '\n';
-    cout << "file size: " << (int)packet.header.fileSize << " sendTime :" << packet.header.sendTime << '\n';
+    cout << "file size: " << (int)packet.header.fileSize
+         << " sendTime :" << packet.header.sendTime << '\n';
     if (ret > 0) {
       packet.header.remaindSize = windowSize - buf.size();
       if (expectseqnum == packet.header.seqnum) {
@@ -67,8 +68,9 @@ int RdtReciver::rdt_rcv() {
           expectseqnum = expectseqnum + 1;
         }
         packet.header.seqnum = expectseqnum;
-        sendto(socket, (char *)&packet, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeofScoketAddrIn);
-      } else if (buf.size() < windowSize){
+        sendto(socket, (char *)&packet, sizeof(packetHeader), 0,
+               (sockaddr *)&remote, sizeofScoketAddrIn);
+      } else if (buf.size() < windowSize) {
         out.seekp(packet.header.seqnum * PACKETDATASIZE);
         out.write(packet.data, packet.header.length);
         buf.push(packet.header.seqnum);
@@ -98,7 +100,8 @@ void RdtReciver::timer() {
         packet.header.length = 0;
         packet.header.remaindSize = windowSize - buf.size();
         packet.header.sendTime = clock_t();
-        sendto(socket, (char *)&packet, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeofScoketAddrIn);
+        sendto(socket, (char *)&packet, sizeof(packetHeader), 0,
+               (sockaddr *)&remote, sizeofScoketAddrIn);
       }
       shouldRestartTimer = 1;
       count = count + 1;
@@ -125,14 +128,17 @@ void RdtReciver::rdt_reciver_packets(Packet *packets, unsigned long n) {
   Packet packet;
   packet.header.fin = 0;
   while (expectseqnum < n && !packet.header.fin) {
-    ret = recvfrom(socket, (char *)&packet, sizeof(packet), 0,(sockaddr *)&remote, &sizeofScoketAddrIn);
+    ret = recvfrom(socket, (char *)&packet, sizeof(packet), 0,
+                   (sockaddr *)&remote, &sizeofScoketAddrIn);
     cout << "size: " << ret << ", seq: " << packet.header.seqnum << '\n';
-    cout << "file size: " << (int)packet.header.fileSize << " sendTime :" << packet.header.sendTime << '\n';
+    cout << "file size: " << (int)packet.header.fileSize
+         << " sendTime :" << packet.header.sendTime << '\n';
     if (ret > 0) {
       packet.header.remaindSize = windowSize - buf.size();
       if (expectseqnum == packet.header.seqnum) {
         shouldRestartTimer = 1;
-        snprintf(packets[packet.header.seqnum].data, packet.header.length, "%s", packet.data);
+        snprintf(packets[packet.header.seqnum].data, packet.header.length, "%s",
+                 packet.data);
         expectseqnum = expectseqnum + 1;
         while (!buf.empty()) {
           if (buf.top() != expectseqnum) {
@@ -142,9 +148,11 @@ void RdtReciver::rdt_reciver_packets(Packet *packets, unsigned long n) {
           expectseqnum = expectseqnum + 1;
         }
         packet.header.seqnum = expectseqnum;
-        sendto(socket, (char *)&packet, sizeof(packetHeader), 0, (sockaddr *)&remote, sizeofScoketAddrIn);
-      } else if (buf.size() < windowSize){
-        snprintf(packets[packet.header.seqnum].data, packet.header.length, "%s", packet.data);
+        sendto(socket, (char *)&packet, sizeof(packetHeader), 0,
+               (sockaddr *)&remote, sizeofScoketAddrIn);
+      } else if (buf.size() < windowSize) {
+        snprintf(packets[packet.header.seqnum].data, packet.header.length, "%s",
+                 packet.data);
         buf.push(packet.header.seqnum);
       }
     }
@@ -152,6 +160,4 @@ void RdtReciver::rdt_reciver_packets(Packet *packets, unsigned long n) {
   stopReciver = 1;
 }
 
-SOCKET &RdtReciver::getSocket() {
-  return socket;
-}
+SOCKET &RdtReciver::getSocket() { return socket; }

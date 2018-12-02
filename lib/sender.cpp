@@ -23,7 +23,7 @@ RdtSender::RdtSender() {
 RdtSender::~RdtSender() {
   in.close();
   closesocket(socket);
-  // WSACleanup();
+  WSACleanup();
 }
 
 void RdtSender::restart() {
@@ -60,16 +60,17 @@ int RdtSender::init(unsigned long targetIP, u_short port) {
   localAddr.sin_family = AF_INET;
   localAddr.sin_port = htons(0);
   localAddr.sin_addr.S_un.S_addr = INADDR_ANY;
-  
-  if (bind(socket, (sockaddr *)&localAddr, sizeofScoketAddrIn) == SOCKET_ERROR) {
+
+  if (bind(socket, (sockaddr *)&localAddr, sizeofScoketAddrIn) ==
+      SOCKET_ERROR) {
     return 3;
   }
-  
+
   return 0;
 }
 
 int RdtSender::rdt_send_file(string filePath) {
-  in.open(filePath, std::ios::in|std::ios::binary);
+  in.open(filePath, std::ios::in | std::ios::binary);
   if (!in) {
     return 1;
   }
@@ -86,7 +87,7 @@ int RdtSender::rdt_send() {
   Packet packet;
   packet.header.fin = 0;
   packet.header.fileSize = fileSize;
-  while(base * PACKETDATASIZE < fileSize) {
+  while (base * PACKETDATASIZE < fileSize) {
     if (isResend) {
       isResend = 0;
       nextseqnum = base;
@@ -102,7 +103,9 @@ int RdtSender::rdt_send() {
       packet.header.length = in.gcount();
       packet.header.sendTime = clock();
       cout << "send packet: " << packet.header.seqnum << '\n';
-      ::sendto(socket,(char *)&packet, packet.header.length + sizeof(packetHeader), 0,(sockaddr *)&targetAddr, sizeof(targetAddr));
+      ::sendto(socket, (char *)&packet,
+               packet.header.length + sizeof(packetHeader), 0,
+               (sockaddr *)&targetAddr, sizeof(targetAddr));
       if (base == nextseqnum) {
         shouldRestartTimer = 1;
       }
@@ -157,11 +160,13 @@ int RdtSender::rdt_rcv() {
   Packet packet;
   int ret;
   while (!stopSender && !isDisConnect) {
-    ret = recvfrom(socket, (char *)&packet, sizeof(packet), 0,(sockaddr *)&targetAddr, &sizeofScoketAddrIn);
+    ret = recvfrom(socket, (char *)&packet, sizeof(packet), 0,
+                   (sockaddr *)&targetAddr, &sizeofScoketAddrIn);
     clock_t SampleRTT = clock() - packet.header.sendTime;
     if (ret > 0) {
-      if ( packet.header.seqnum > base) {
-        cout << "should restart timer\n" << "base to:" << packet.header.seqnum <<'\n';
+      if (packet.header.seqnum > base) {
+        cout << "should restart timer\n"
+             << "base to:" << packet.header.seqnum << '\n';
         shouldRestartTimer = 1;
         base = packet.header.seqnum;
         CongestionControl(NEWACK);
@@ -174,7 +179,9 @@ int RdtSender::rdt_rcv() {
           isResend = 1;
         }
       }
-      windowSize = ((packet.header.remaindSize ^ cwnd) & -(packet.header.remaindSize < cwnd)) ^ cwnd;
+      windowSize = ((packet.header.remaindSize ^ cwnd) &
+                    -(packet.header.remaindSize < cwnd)) ^
+                   cwnd;
       if (windowSize == 0) {
         windowSize = 1;
       }
@@ -188,16 +195,12 @@ int RdtSender::rdt_rcv() {
   return ret;
 }
 
-sockaddr_in RdtSender::getRemote() {
-  return targetAddr;
-}
-SOCKET RdtSender::getSocket() {
-  return socket;
-}
+sockaddr_in RdtSender::getRemote() { return targetAddr; }
+SOCKET RdtSender::getSocket() { return socket; }
 
 void RdtSender::CongestionControl(Actions act) {
   switch (status) {
-    case SLOWSTART: //慢启动
+    case SLOWSTART:  //慢启动
       if (act == NEWACK) {
         cwnd = cwnd + 1;
         counter = 0;
@@ -216,10 +219,10 @@ void RdtSender::CongestionControl(Actions act) {
         status = CONGESTIONAVOIDANCE;
       }
       break;
-    case CONGESTIONAVOIDANCE: //拥塞避免
+    case CONGESTIONAVOIDANCE:  //拥塞避免
       if (act == NEWACK) {
-        helperCount = helperCount + 1.0/cwnd;
-        cwnd = cwnd + (long) helperCount;
+        helperCount = helperCount + 1.0 / cwnd;
+        cwnd = cwnd + (long)helperCount;
         counter = 0;
       } else if (act == TIMEOUT) {
         ssthresh = cwnd / 2;
@@ -235,7 +238,7 @@ void RdtSender::CongestionControl(Actions act) {
         status = FASTRECOVERY;
       }
       break;
-    case FASTRECOVERY: //快速恢复
+    case FASTRECOVERY:  //快速恢复
       if (act == NEWACK) {
         cwnd = ssthresh;
         counter = 0;
@@ -266,7 +269,9 @@ void RdtSender::rdt_send_packets(Packet *packets, unsigned long n) {
       packets[base].header.length = strlen(packets[base].data);
       packets[base].header.sendTime = clock();
       cout << "send packet: " << packets[base].header.seqnum << '\n';
-      ::sendto(socket,(char *)&packets[base], packets[base].header.length + sizeof(packetHeader), 0,(sockaddr *)&targetAddr, sizeof(targetAddr));
+      ::sendto(socket, (char *)&packets[base],
+               packets[base].header.length + sizeof(packetHeader), 0,
+               (sockaddr *)&targetAddr, sizeof(targetAddr));
       if (base == nextseqnum) {
         shouldRestartTimer = 1;
       }

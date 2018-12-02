@@ -1,11 +1,11 @@
 #include <winsock2.h>
 #include <cstdio>
-#include <iostream>
 #include <fstream>
-#include <string>
+#include <iostream>
 #include <regex>
-#include "sender.hpp"
+#include <string>
 #include "reciver.hpp"
+#include "sender.hpp"
 using namespace std;
 
 int main(int argc, char const *argv[]) {
@@ -23,9 +23,9 @@ int main(int argc, char const *argv[]) {
     cin >> operate;
   }
   const char *str = operate.c_str();
-  if (strcmp(str,"lget") == 0) {
+  if (strcmp(str, "lget") == 0) {
     ch = 'g';
-  } else if (strcmp(str,"lsend") == 0) {
+  } else if (strcmp(str, "lsend") == 0) {
     ch = 's';
   } else {
     cout << operate << "is wrong parameter. please use lget or lsend.\n";
@@ -40,7 +40,7 @@ int main(int argc, char const *argv[]) {
     }
   } else {
     cout << "Please input servers ip\n";
-    while(cin >> ipstr) {
+    while (cin >> ipstr) {
       if ((ip = inet_addr(ipstr.c_str())) != INADDR_NONE) {
         break;
       } else {
@@ -52,7 +52,7 @@ int main(int argc, char const *argv[]) {
   if (argc > 3) {
     filePath = string(argv[3]);
     if (ch == 's') {
-      ifstream in(filePath, ios::in|ios::binary);
+      ifstream in(filePath, ios::in | ios::binary);
       if (!in) {
         cout << "file doesn't exit or file path is invalid.\n";
         return 0;
@@ -60,7 +60,7 @@ int main(int argc, char const *argv[]) {
         in.close();
       }
     } else if (ch == 'g') {
-      ofstream out(filePath, ios::out|ios::binary);
+      ofstream out(filePath, ios::out | ios::binary);
       if (!out) {
         cout << "can't write file to " << filePath << " .\n";
       } else {
@@ -72,9 +72,9 @@ int main(int argc, char const *argv[]) {
     }
   } else {
     cout << "please input file path.\n";
-    while(cin >> filePath) {
+    while (cin >> filePath) {
       if (ch == 's') {
-        ifstream in(filePath, ios::in|ios::binary);
+        ifstream in(filePath, ios::in | ios::binary);
         if (!in) {
           cout << "file doesn't exit or file path is invalid.\n";
           count++;
@@ -86,7 +86,7 @@ int main(int argc, char const *argv[]) {
           return 0;
         }
       } else if (ch == 'g') {
-        ofstream out(filePath, ios::out|ios::binary);
+        ofstream out(filePath, ios::out | ios::binary);
         if (!out) {
           cout << "can't write file to " << filePath << " .\n";
           count++;
@@ -109,7 +109,7 @@ int main(int argc, char const *argv[]) {
   Packet packets[1];
   if (ch == 's') {
     snprintf(packets[0].data, PACKETDATASIZE, "%c%s", ch, filePath.c_str());
-    packets[0].header.length = (unsigned long) filePath.size() + 1;
+    packets[0].header.length = (unsigned long)filePath.size() + 1;
     sender.rdt_send_packets(packets, 1);
     sender.restart();
     sender.rdt_send_file(filePath);
@@ -135,7 +135,9 @@ int main(int argc, char const *argv[]) {
           sockaddr_in back;
           getsockname(reciver.getSocket(), (sockaddr *)&back, &len);
           cout << "port " << back.sin_port << '\n';
-          sendto(reciver.getSocket(), (char *)packets, sizeof(packetHeader) + length, 0, (sockaddr *)&remote, sizeof(sockaddr));
+          sendto(reciver.getSocket(), (char *)packets,
+                 sizeof(packetHeader) + length, 0, (sockaddr *)&remote,
+                 sizeof(sockaddr));
           reciver.rdt_reciver_packets(p, 1);
           cout << "syn is ack.\n";
           cout << "start recive.\n";
@@ -145,7 +147,8 @@ int main(int argc, char const *argv[]) {
         });
         newReciverThread.detach();
       }
-      ret = recvfrom(sender.getSocket(), (char *)packets, sizeof(Packet), 0, (sockaddr *)&remote, &len);
+      ret = recvfrom(sender.getSocket(), (char *)packets, sizeof(Packet), 0,
+                     (sockaddr *)&remote, &len);
     }
   }
   return 0;
