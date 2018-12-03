@@ -130,8 +130,8 @@ int main(int argc, char const *argv[]) {
           RdtReciver reciver;
           reciver.init(INADDR_ANY, 0);
           cout << "syn with server.\n";
-          cout << "data" << packets[0].data << '\n';
-          int len = 16;
+          cout << "data: " << packets[0].data << '\n';
+          int len = sizeof(sockaddr);
           sockaddr_in back;
           getsockname(reciver.getSocket(), (sockaddr *)&back, &len);
           cout << "port " << back.sin_port << '\n';

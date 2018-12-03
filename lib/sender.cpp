@@ -257,8 +257,6 @@ void RdtSender::CongestionControl(Actions act) {
 void RdtSender::rdt_send_packets(Packet *packets, unsigned long n) {
   thread recvThread(&RdtSender::rdt_rcv, this);
   thread timerThread(&RdtSender::timer, this);
-  recvThread.detach();
-  timerThread.detach();
   while (base < n) {
     if (isResend) {
       isResend = 0;
@@ -279,5 +277,7 @@ void RdtSender::rdt_send_packets(Packet *packets, unsigned long n) {
     }
   }
   stopSender = 1;
+  recvThread.join();
+  timerThread.join();
   cout << "send complete!\n";
 }
