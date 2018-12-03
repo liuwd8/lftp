@@ -2,3 +2,5 @@ client/data/
 servers/data/
 .vscode/
 test/
+bin/client/data/
+bin/servers/data/
