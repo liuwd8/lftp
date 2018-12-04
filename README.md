@@ -27,7 +27,7 @@ lftp lsend 服务器ip 文件路径
 servers
 ```
 ## 编译方法
-根目录下使用以下方法编译得到客户端和服务端, bin文件夹中有已经编译好的。
+根目录下使用以下方法编译得到客户端和服务端, `bin`文件夹中有已经编译好的。
 ```sh
 g++ lib\reciver.cpp lib\sender.cpp servers\servers.cpp -I include -lwsock32 -Wall -std=c++11 -o servers
 ```

@@ -61,16 +61,17 @@ int RdtReciver::rdt_rcv() {
         out.write(packet.data, packet.header.length);
         expectseqnum = expectseqnum + 1;
         while (!buf.empty()) {
-          if (buf.top() != expectseqnum) {
+          if (buf.top() > expectseqnum) {
             break;
+          } else if (buf.top() == expectseqnum) {
+            expectseqnum = expectseqnum + 1;
           }
           buf.pop();
-          expectseqnum = expectseqnum + 1;
         }
         packet.header.seqnum = expectseqnum;
         sendto(socket, (char *)&packet, sizeof(packetHeader), 0,
                (sockaddr *)&remote, sizeofScoketAddrIn);
-      } else if (buf.size() < windowSize) {
+      } else if (expectseqnum < packet.header.seqnum && buf.size() < windowSize) {
         out.seekp(packet.header.seqnum * PACKETDATASIZE);
         out.write(packet.data, packet.header.length);
         buf.push(packet.header.seqnum);
