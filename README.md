@@ -39,3 +39,5 @@ g++ lib\reciver.cpp lib\sender.cpp client\client.cpp -I include -lwsock32 -Wall 
 ## 注意事项
 * 服务器不会自动退出，除非使用<kbd>ctrl</kbd> + <kbd>c</kbd>
 * 服务端和客户端使用的路径是相同的，服务端根据客户端发送的路径来创建或者选择文件。所以当服务端不存在文件，而客户端使用 `lget`命令时，无提示，也不会终止。但是其实是无法获取文件的。`lsend`同理。
+
+## LICENSE
